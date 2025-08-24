@@ -1,13 +1,62 @@
+#dbname= "Farmers",               
+#host= "localhost",
+#user="postgres",
+#password="12345",
+#port="5432"
+
 import psycopg
 
-conn = psycopg.connect(dbname="Farmers",
-                        host="localhost",
-                        user="postgres",
-                        password="12345",
-                        port="5432")
+conn = psycopg.connect(dbname= input ('Введите имя базы: '),               
+                        host= input ('Введите имя хоста: '),
+                        user=input ('Авторизуйтесь: '),
+                        password=input ('Введите пароль: '),
+                        port=input ('Введите порт: '))
 cur = conn.cursor()  # Создаем курсор
+def find_markets_by_city(cur, city_name):
+    """
+    Ищет рынки в базе данных по названию города.
 
+    Args:
+        cur: Курсор базы данных psycopg2.
+        city_name: Название города для поиска.
+
+    Returns:
+        Список кортежей с информацией о рынках, найденных в городе, или None, если ничего не найдено.
+    """
+    cur.execute("""
+        SELECT m.fmid, s.zip, c.country_name, s.state_name, s.city_name, m.market_name, m.street
+        FROM markets.countries c
+        JOIN markets.state_city s ON c.c_id = s.c_id
+        JOIN markets.markets m ON s.zip = m.zip AND m.c_ig = s.c_id
+        WHERE s.city_name = %s
+    """, (city_name,))
+    market_list = cur.fetchall()
+    return market_list if market_list else None
+def find_market_by_state(cur, state_name):
+    cur.execute("""
+        SELECT m.fmid, s.zip, c.country_name, s.state_name, s.city_name, m.market_name, m.street
+        FROM markets.countries c
+        JOIN markets.state_city s ON c.c_id = s.c_id
+        JOIN markets.markets m ON s.zip = m.zip AND m.c_ig = s.c_id
+        WHERE s.state_name = %s
+    """, (state_name,))
+    market_list = cur.fetchall()
+    return market_list if market_list else None
+def find_index(cur, index):
+    cur.execute("""select m.fmid,s.zip, c.country_name, s.state_name, s.city_name, m.market_name, m.street 
+                            from markets.countries c, markets.state_city s, markets.markets m
+                            where c.c_id = s.c_id and s.zip = m.zip and m.c_ig = s.c_id and s.zip = %s """, (zip,))
+    market_list = cur.fetchall()
+    return market_list if market_list else None
+
+def display_market_details (market_list, all_market_info):
+    for fmid,zip,country_name,state_name, city, market_name, street in  market_list:
+        if fmid==all_market_info:
+            print(f"FMID: {fmid}\n Zip: {zip}\n Country: {country_name}\n State: {state_name}\n City: {city}\n Market: {market_name}\n Street: {street}")
+            return True
+    return False
 mein_menu = input ('Сделайте ваш выбор: ')
+
 if mein_menu == '0':
     print('Спасибо, что зашли!')
 elif mein_menu == '1':
@@ -18,12 +67,15 @@ elif mein_menu == '1':
  - Поиск рынка по названию штата - 3
  - Поиск рынка по индексу - 4
  - Просмотр и добавление рейтинга и рецензии - 5
- - Удаление отзыва - 6
+ - Распределять рынки критериям - 6
+ - Удаление отзыва - 7
  - Выход - 0)'''
     submenu = '''
 - Вывести все рынки по странично - 1
 - Вывести отзывы по одному рынку - 2
 - Вывести рейтинг рынка - 3
+- Рейтингу - 4
+- Городу и штату - 5
  '''
     command = ''
     while command != '0':
@@ -92,70 +144,54 @@ elif mein_menu == '1':
                         print (f"Название рынка: {market_name}, Рейтинг: {mark}")
                 #else: print  (f"Для рынка {market_name} - нет рейтинга, но вы можете его оставить")
             break
-        if command =='2':
+        if command =='2': 
             city_name = input ('Введите название города: ')
-            cur.execute(f"""select m.fmid,s.zip, c.country_name, s.state_name, s.city_name, m.market_name, m.street 
-                            from markets.countries c, markets.state_city s, markets.markets m
-                            where c.c_id = s.c_id and s.zip = m.zip and m.c_ig = s.c_id 
-                        """)
-            state_city = cur.fetchall()
-            found = False
-            market_list = []
-            for fmid,zip,country_name,state_name, city, market_name, street in  state_city:
-                if city==city_name:
-                    print (market_name)
-                    found = True
-                    market_list.append((fmid,zip,country_name,state_name, city, market_name, street))
-            if not found:
+            market_list = find_markets_by_city(cur, city_name)
+            if market_list is None:
                 print ('Город не найден')
             else: 
-                all_market_info = int (input ("Введите уникальный номер рынка для получения подробной информации: "))
                 for fmid,zip,country_name,state_name, city, market_name, street in  market_list:
-                    if fmid == all_market_info:
-                        print(f"FMID: {fmid}\n Zip: {zip}\n Country: {country_name}\n State: {state_name}\n City: {city}\n Market: {market_name}\n Street: {street}")
-            break
+                    print(market_name)
+                try:
+                    all_market_info = int (input ("Введите уникальный номер рынка для получения подробной информации: "))
+                    if not display_market_details(market_list, all_market_info):
+                        print("Рынок с таким номером не найден.")
+                except ValueError:
+                    print("Некорректный ввод.  Введите целое число.")
+
+            break # Выход
         if command =='3':
-            country_name_r = input ('Введите название штата: ')
-            cur.execute(f"""select m.fmid,s.zip, c.country_name, s.state_name, s.city_name, m.market_name, m.street 
-                            from markets.countries c, markets.state_city s, markets.markets m
-                            where c.c_id = s.c_id and s.zip = m.zip and m.c_ig = s.c_id """)
-            countries = cur.fetchall()
-            found = False
-            market_country_list = []
-            for fmid,zip, country_name, state_name, city_name, market_name, street  in  countries:
-                if country_name==country_name_r:
-                    print (market_name)
-                    found = True
-                    market_country_list.append((fmid,zip, country_name, state_name, city_name, market_name, street))
-            if not found:
+            state_name = input ('Введите название штата: ')
+            market_list = find_market_by_state(cur, state_name) 
+            if market_list is None:
                 print ('Штат не найден')
             else: 
-                all_market_info = int (input ("Введите уникальный номер рынка для получения подробной информации: "))
-                for fmid,zip,country_name,state_name, city, market_name, street in  market_country_list:
-                     if fmid == all_market_info:
-                       print(f"FMID: {fmid}\n Zip: {zip}\n Country: {country_name}\n State: {state_name}\n City: {city}\n Market: {market_name}\n Street: {street}")  # Печатаем информацию о рынке
-            break
+                for fmid,zip,country_name,state_name, city, market_name, street in  market_list:
+                    print(market_name)
+                try:
+                    all_market_info = int (input ("Введите уникальный номер рынка для получения подробной информации: "))
+                    if not display_market_details(market_list, all_market_info):
+                        print("Рынок с таким номером не найден.")
+                except ValueError:
+                    print("Некорректный ввод.  Введите целое число.")
+
+            break # Выход
         if command =='4':
-            zip_name = int (input ('Введите индекс: '))
-            cur.execute(f"""select m.fmid,s.zip, c.country_name, s.state_name, s.city_name, m.market_name, m.street 
-                            from markets.countries c, markets.state_city s, markets.markets m
-                            where c.c_id = s.c_id and s.zip = m.zip and m.c_ig = s.c_id """)
-            markets = cur.fetchall()
-            found = False
-            all_market_list=[]
-            for fmid,zip, country_name, state_name, city_name, market_name, street in  markets:
-                if zip==zip_name:
-                    print (market_name)
-                    found = True
-                    all_market_list.append((fmid,zip, country_name, state_name, city_name, market_name, street))
-            if not found:
+            zip = int (input ('Введите индекс: '))
+            market_list = find_index(cur, zip)
+            if market_list is None:
                 print ('Индекс не найден')
-            else: 
-                all_market_info = int (input ("Введите уникальный номер рынка для получения подробной информации: "))
-                for fmid,zip,country_name,state_name, city, market_name, street in  all_market_list:
-                    if fmid == all_market_info:
-                        print(f"FMID: {fmid}\n Zip: {zip}\n Country: {country_name}\n State: {state_name}\n City: {city}\n Market: {market_name}\n Street: {street}")
-            break
+            else:
+                for fmid,zip, country_name, state_name, city_name, market_name, street in  market_list:
+                    print (market_name)
+                try: 
+                    all_market_info = int (input ("Введите уникальный номер рынка для получения подробной информации: "))
+                    if not display_market_details(market_list, all_market_info):
+                        print("Рынок с таким номером не найден.")
+                except ValueError:
+                    print("Некорректный ввод.  Введите целое число.")
+
+            break # Выход
         if command =='5':
             review_list=[]
             while True:
@@ -221,7 +257,7 @@ elif mein_menu == '1':
                     cur.execute(insert_sql, (unic_number, market_review, owner))
                     conn.commit()
                     print("Отзыв успешно добавлен!")
-        if command =='6':
+        if command =='7':
             review_list=[]
             while True:
                 try:
