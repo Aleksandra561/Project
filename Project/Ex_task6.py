@@ -1,10 +1,10 @@
 import psycopg
 
-conn = psycopg.connect(dbname="Farmers",
-                        host="localhost",
-                        user="postgres",
-                        password="12345",
-                        port="5432")
+conn = psycopg.connect(dbname= input ('Введите имя базы: '),               
+                        host= input ('Введите имя хоста: '),
+                        user=input ('Авторизуйтесь: '),
+                        password=input ('Введите пароль: '),
+                        port=input ('Введите порт: '))
 cur = conn.cursor()  # Создаем курсор
 
 mein_menu = input ('Сделайте ваш выбор: ')
